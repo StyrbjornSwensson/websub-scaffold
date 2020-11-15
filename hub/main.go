@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+type ActiveSubscriber struct {
+	SubCallback	string
+	SubTopic	string
+	SubSecret	string
+}
 
 type SubRequestResponse struct{
 	HubTopic	 	string 	`url:"hub.topic"`
@@ -20,6 +25,7 @@ type SubRequestResponse struct{
 	HubLease		string	`url:"hub.lease_seconds"`
 }
 
+var activeSubscribers []ActiveSubscriber
 
 func SubRequest(w http.ResponseWriter, r *http.Request) {
  	w.Header().Set("Content-Type", "application/json")
@@ -61,8 +67,17 @@ func SubRequest(w http.ResponseWriter, r *http.Request) {
 
 	subConfirmationResponse, err := http.Get(params["hub.callback"][0]+u.String())
 
-	fmt.Println(subConfirmationResponse)
-	fmt.Println(params["hub.callback"][0] + u.String())
+	fmt.Println(subConfirmationResponse.StatusCode, "Client Subscribed")
+
+	if subConfirmationResponse.StatusCode == 200 {
+		activeSubscriber := ActiveSubscriber{
+			params["hub.callback"][0],
+			params["hub.topic"][0],
+			params["hub.secret"][0],
+		}
+		activeSubscribers = append(activeSubscribers, activeSubscriber)
+	}
+
 }
 
 
@@ -89,6 +104,10 @@ func createRandomString() string {
 		return str
 }
 
+func PublishData(w http.ResponseWriter, r *http.Request) {
+
+}
+
 func main() {
 	// Init Router
 	router := mux.NewRouter()
@@ -96,6 +115,7 @@ func main() {
 
 	// Route Handlers / Endpoints
 	router.HandleFunc("/", SubRequest).Methods("POST")
+	router.HandleFunc("/publish", PublishData).Methods("GET")
 
 
 	log.Fatal(http.ListenAndServe(":8080", router))
