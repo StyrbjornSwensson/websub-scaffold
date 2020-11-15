@@ -3,31 +3,52 @@ package main
 
 import (
 	"encoding/json"
-	//"encoding/json"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
-	//"math/rand"
-	//"strconv"
-	"github.com/gorilla/mux"
 )
 
+type FormValue struct {
+	key 	string	`json:"hub.callback"`
+	value []string	`json:"value"`
+}
 
+type Message struct {
+	body string `json:"body"`
+}
 
 // create message slice
-var messages []string
+var messages []Message
+var formvals []FormValue
 
 
-func recieveMessage(w http.ResponseWriter, r *http.Request) {
+func receiveMessage(w http.ResponseWriter, r *http.Request) {
  	w.Header().Set("Content-Type", "application/json")
-	var message string
-	_ = json.NewDecoder(r.Body).Decode(&message)
+	err := r.ParseForm()
+	var message Message
+	_ = json.NewDecoder(r.Body).Decode(message)
 	messages = append(messages, message)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	for key, value := range r.PostForm {
+		var formval = FormValue{key, value}
+		formvals = append(formvals, formval)
+	}
+
 }
 
 func getMessages(w http.ResponseWriter, r *http.Request){
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(messages)
+	_= json.NewEncoder(w).Encode(messages)
 }
+func getFormvals(w http.ResponseWriter, r *http.Request){
+	w.Header().Set("Content-Type", "application/json")
+	_= json.NewEncoder(w).Encode(formvals)
+}
+
+
 
 
 func main() {
@@ -36,8 +57,9 @@ func main() {
 
 
 	// Route Handlers / Endpoints
-	router.HandleFunc("/", recieveMessage).Methods("POST")
+	router.HandleFunc("/", receiveMessage).Methods("POST")
 	router.HandleFunc("/", getMessages).Methods("GET")
+	router.HandleFunc("/formvals/", getFormvals).Methods("GET")
 
 
 	log.Fatal(http.ListenAndServe(":8080", router))
