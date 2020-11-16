@@ -16,20 +16,12 @@ import (
 	"time"
 )
 
-type ActiveSubscriber struct {
+type Subscriber struct {
 	SubCallback	string
 	SubTopic	string
 	SubSecret	string
 }
-
-type SubRequestResponse struct{
-	HubTopic	 	string 	`url:"hub.topic"`
-	HubMode 		string 	`url:"hub.mode"`
-	HubChallenge	string	`url:"hub.challenge"`
-	HubLease		string	`url:"hub.lease_seconds"`
-}
-
-var activeSubscribers []ActiveSubscriber
+var activeSubscribers []Subscriber
 
 func SubRequest(w http.ResponseWriter, r *http.Request) {
  	w.Header().Set("Content-Type", "application/json")
@@ -52,18 +44,11 @@ func SubRequest(w http.ResponseWriter, r *http.Request) {
 
 	params, err := url.ParseQuery(decodedString)
 
-	subRequestResponse := SubRequestResponse{
-		HubTopic: params["hub.topic"][0],
-		HubMode: params["hub.mode"][0],
-		HubChallenge: createRandomString(),
-		HubLease: "3600",
-	}
-
 	confirmationParams := url.Values{}
-	confirmationParams.Add("hub.topic", subRequestResponse.HubTopic)
-	confirmationParams.Add("hub.mode", subRequestResponse.HubMode)
-	confirmationParams.Add("hub.challenge", subRequestResponse.HubChallenge)
-	confirmationParams.Add("hub.lease_seconds", subRequestResponse.HubLease)
+	confirmationParams.Add("hub.topic", params["hub.topic"][0])
+	confirmationParams.Add("hub.mode", params["hub.mode"][0])
+	confirmationParams.Add("hub.challenge", createRandomString())
+	confirmationParams.Add("hub.lease_seconds", "3600")
 
 	u := &url.URL{
 		RawQuery: confirmationParams.Encode(),
@@ -74,7 +59,7 @@ func SubRequest(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(subConfirmationResponse.StatusCode, "Client Subscribed")
 
 	if subConfirmationResponse.StatusCode == 200 {
-		activeSubscriber := ActiveSubscriber{
+		activeSubscriber := Subscriber{
 			params["hub.callback"][0],
 			params["hub.topic"][0],
 			params["hub.secret"][0],
