@@ -133,11 +133,7 @@ func PublishData(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 			return
 		}
-
 	}
-
-
-
 }
 
 

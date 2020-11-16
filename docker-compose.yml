@@ -21,5 +21,5 @@ services:
     environment:
       - HOSTNAME=web-sub-client
       - PORT=8080
-      - HUB_URL=http://hub:8080
+      - HUB_URL=http://localhost:8080
       - TOPIC=/a/topic
