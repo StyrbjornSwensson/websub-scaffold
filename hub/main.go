@@ -59,7 +59,7 @@ func SubRequest(w http.ResponseWriter, r *http.Request) {
 
 	subConfirmationResponse, err := http.Get(params["hub.callback"][0]+ responseParams.String())
 
-	fmt.Println(subConfirmationResponse.StatusCode, "Client Subscribed")
+	fmt.Println(subConfirmationResponse.StatusCode)
 
 	if subConfirmationResponse.StatusCode == 200 {
 		activeSubscriber := Subscriber{
@@ -104,7 +104,7 @@ func PublishData(w http.ResponseWriter, r *http.Request) {
 	client := http.Client{
 		Timeout: timeout,
 	}
-	
+
 	for _, subscriber := range activeSubscribers {
 		requestBody, err := json.Marshal(map[string]string{
 			"data": data,
@@ -132,7 +132,7 @@ func PublishData(w http.ResponseWriter, r *http.Request) {
 
 		response, err := client.Do(request)
 
-		fmt.Println(response.StatusCode, "Publish successful")
+		fmt.Println(response.StatusCode)
 		if err != nil {
 			log.Fatal(err)
 			return
