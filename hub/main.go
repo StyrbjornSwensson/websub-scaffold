@@ -3,6 +3,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -126,9 +129,21 @@ func PublishData(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 			return
 		}
-		request.Header.Set("Content-type", "application/json")
 
-		_, err = client.Do(request)
+		encryptedSecret := hmac.New(sha256.New, []byte(subscriber.SubSecret))
+		fmt.Println("subsecret:" + subscriber.SubSecret)
+
+		encryptedSecret.Write(requestBody)
+
+		signatureValue := "sha256=" + hex.EncodeToString(encryptedSecret.Sum(nil))
+
+		fmt.Println(signatureValue)
+		request.Header.Set("Content-type", "application/json")
+		request.Header.Add("X-Hub-Signature", signatureValue)
+
+		response, err := client.Do(request)
+
+		fmt.Println(response.StatusCode, "Publish successful")
 		if err != nil {
 			log.Fatal(err)
 			return
@@ -139,6 +154,7 @@ func PublishData(w http.ResponseWriter, r *http.Request) {
 
 
 }
+
 
 func main() {
 	// Init Router
