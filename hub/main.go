@@ -3,6 +3,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"log"
@@ -105,6 +106,37 @@ func createRandomString() string {
 }
 
 func PublishData(w http.ResponseWriter, r *http.Request) {
+
+
+	data := createRandomString()
+	timeout:= time.Duration(5* time.Second)
+	client := http.Client{
+		Timeout: timeout,
+	}
+	for _, subscriber := range activeSubscribers {
+		requestBody, err := json.Marshal(map[string]string{
+			"data": data,
+		})
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		request, err := http.NewRequest("POST", subscriber.SubCallback, bytes.NewBuffer(requestBody))
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		request.Header.Set("Content-type", "application/json")
+
+		_, err = client.Do(request)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+	}
+
+
 
 }
 
