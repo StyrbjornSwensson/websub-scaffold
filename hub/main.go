@@ -24,7 +24,6 @@ type Subscriber struct {
 var activeSubscribers []Subscriber
 
 func SubRequest(w http.ResponseWriter, r *http.Request) {
- 	w.Header().Set("Content-Type", "application/json")
 
  	buf := new(bytes.Buffer)
  	_, err := buf.ReadFrom(r.Body)
@@ -34,8 +33,8 @@ func SubRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
- 	newStr := buf.String()
- 	decodedString, err := url.QueryUnescape(newStr)
+ 	queryBuffer := buf.String()
+ 	decodedString, err := url.QueryUnescape(queryBuffer)
 
 	if err != nil {
 		log.Fatal(err)
@@ -43,6 +42,10 @@ func SubRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	params, err := url.ParseQuery(decodedString)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 
 	confirmationParams := url.Values{}
 	confirmationParams.Add("hub.topic", params["hub.topic"][0])
@@ -50,11 +53,11 @@ func SubRequest(w http.ResponseWriter, r *http.Request) {
 	confirmationParams.Add("hub.challenge", createRandomString())
 	confirmationParams.Add("hub.lease_seconds", "3600")
 
-	u := &url.URL{
+	responseParams := &url.URL{
 		RawQuery: confirmationParams.Encode(),
 	}
 
-	subConfirmationResponse, err := http.Get(params["hub.callback"][0]+u.String())
+	subConfirmationResponse, err := http.Get(params["hub.callback"][0]+ responseParams.String())
 
 	fmt.Println(subConfirmationResponse.StatusCode, "Client Subscribed")
 
@@ -101,6 +104,7 @@ func PublishData(w http.ResponseWriter, r *http.Request) {
 	client := http.Client{
 		Timeout: timeout,
 	}
+	
 	for _, subscriber := range activeSubscribers {
 		requestBody, err := json.Marshal(map[string]string{
 			"data": data,
