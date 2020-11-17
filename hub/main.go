@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	//"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -62,11 +63,15 @@ func SubRequest(w http.ResponseWriter, r *http.Request) {
 		RawQuery: confirmationParams.Encode(),
 	}
 
+
 	subConfirmationResponse, err := http.Get(params["hub.callback"][0]+ responseParams.String())
+	sbuf := new(bytes.Buffer)
+	_, err = sbuf.ReadFrom(subConfirmationResponse.Body)
+	sBody := sbuf.String()
 
 	fmt.Println(subConfirmationResponse.StatusCode)
 
-	if subConfirmationResponse.StatusCode == 200 {
+	if subConfirmationResponse.StatusCode >= 200 && subConfirmationResponse.StatusCode <= 299 && sBody == confirmationParams["hub.challenge"][0]{
 		activeSubscriber := Subscriber{
 			params["hub.callback"][0],
 			params["hub.secret"][0],
@@ -114,8 +119,11 @@ func PublishData(w http.ResponseWriter, r *http.Request) {
 		Timeout: timeout,
 	}
 
+
 	topicSubscribers.RLock()
+	defer topicSubscribers.RUnlock()
 	for _, subscriber := range topicSubscribers.topicSubscriberMap[topic] {
+
 		requestBody, err := json.Marshal(map[string]string{
 			"data": data,
 		})
@@ -148,7 +156,7 @@ func PublishData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	topicSubscribers.RUnlock()
+
 
 }
 
