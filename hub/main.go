@@ -13,18 +13,23 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
 type Subscriber struct {
 	SubCallback	string
-	SubTopic	string
 	SubSecret	string
 }
-var activeSubscribers []Subscriber
+
+var topicSubscribers = struct {
+	sync.RWMutex
+	topicSubscriberMap map[string][]Subscriber
+}{topicSubscriberMap: make(map[string][]Subscriber)}
 
 func SubRequest(w http.ResponseWriter, r *http.Request) {
 
+	fmt.Println("Subscription request received")
  	buf := new(bytes.Buffer)
  	_, err := buf.ReadFrom(r.Body)
 
@@ -64,10 +69,12 @@ func SubRequest(w http.ResponseWriter, r *http.Request) {
 	if subConfirmationResponse.StatusCode == 200 {
 		activeSubscriber := Subscriber{
 			params["hub.callback"][0],
-			params["hub.topic"][0],
 			params["hub.secret"][0],
 		}
-		activeSubscribers = append(activeSubscribers, activeSubscriber)
+		topicSubscribers.Lock()
+		topicSubscribers.topicSubscriberMap[params["hub.topic"][0]]=append(topicSubscribers.topicSubscriberMap[params["hub.topic"][0]], activeSubscriber)
+		topicSubscribers.Unlock()
+
 	}
 
 }
@@ -98,6 +105,8 @@ func createRandomString() string {
 
 func PublishData(w http.ResponseWriter, r *http.Request) {
 
+	query := r.URL.Query()
+	topic := query["topic"][0]
 
 	data := createRandomString()
 	timeout:= time.Duration(5* time.Second)
@@ -105,7 +114,8 @@ func PublishData(w http.ResponseWriter, r *http.Request) {
 		Timeout: timeout,
 	}
 
-	for _, subscriber := range activeSubscribers {
+	topicSubscribers.RLock()
+	for _, subscriber := range topicSubscribers.topicSubscriberMap[topic] {
 		requestBody, err := json.Marshal(map[string]string{
 			"data": data,
 		})
@@ -138,6 +148,8 @@ func PublishData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	topicSubscribers.RUnlock()
+
 }
 
 
@@ -148,7 +160,7 @@ func main() {
 
 	// Route Handlers / Endpoints
 	router.HandleFunc("/", SubRequest).Methods("POST")
-	router.HandleFunc("/publish", PublishData).Methods("GET")
+	router.HandleFunc("/publish", PublishData).Methods("POST")
 
 
 	log.Fatal(http.ListenAndServe(":8080", router))
